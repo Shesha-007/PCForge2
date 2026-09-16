@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PC Forge — PC Builder & Simulator</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;background:#0a0d12;color:#eef2f7}
+header{padding:24px 5%;border-bottom:1px solid #202630;display:flex;justify-content:space-between;align-items:center;gap:20px;position:sticky;top:0;background:#0a0d12ee;backdrop-filter:blur(12px);z-index:5}
+.logo{font-size:25px;font-weight:900}.logo span{color:#72e6a5}
+.container{width:min(1400px,90%);margin:28px auto}.grid{display:grid;grid-template-columns:330px 1fr;gap:22px}
+.card{background:#11161e;border:1px solid #222b37;border-radius:18px;padding:20px;box-shadow:0 10px 35px #0004}
+h1,h2,h3{margin-top:0}.muted{color:#94a0b0}.controls label{display:block;font-size:13px;color:#aeb8c5;margin:15px 0 6px}
+select,input{width:100%;background:#0b1016;color:#eef2f7;border:1px solid #303a48;border-radius:10px;padding:11px}
+button{border:0;border-radius:10px;padding:11px 15px;background:#72e6a5;color:#07110b;font-weight:800;cursor:pointer}
+button.secondary{background:#202936;color:#eef2f7}.hero{display:grid;grid-template-columns:1.2fr .8fr;gap:18px}
+.statgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.stat{background:#0c1118;border-radius:13px;padding:14px}.stat b{display:block;font-size:22px;margin-top:5px}
+.score{font-size:62px;font-weight:950;color:#72e6a5}.pill{display:inline-block;background:#1b3027;color:#8cf0b5;padding:5px 9px;border-radius:99px;font-size:12px}
+.parts{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:14px}.part{padding:14px;border:1px solid #27303c;border-radius:13px;background:#0d1219}.part small{color:#8793a3}.part b{display:block;margin:4px 0}
+table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px;border-bottom:1px solid #242c36}th{color:#9eabb9;font-size:12px}
+.note{padding:13px;border-left:3px solid #72e6a5;background:#101a16;color:#b8c5c0;border-radius:8px;margin-top:15px;font-size:13px}
+.bar{height:10px;background:#202733;border-radius:20px;overflow:hidden}.bar i{display:block;height:100%;background:#72e6a5}
+@media(max-width:900px){.grid,.hero{grid-template-columns:1fr}.statgrid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.parts{grid-template-columns:1fr}.container{width:94%}header{padding:18px 3%}}
+</style>
+</head>
+<body>
+<header><div class="logo">PC<span>FORGE</span></div><div class="muted">Build • Simulate • Compare</div></header>
+<div class="container">
+<div class="grid">
+<aside class="card controls">
+<h2>Build your PC</h2>
+<p class="muted">Choose parts and see estimated performance instantly.</p>
+<label>CPU</label><select id="cpu"></select>
+<label>GPU</label><select id="gpu"></select>
+<label>RAM</label><select id="ram"></select>
+<label>Storage</label><select id="storage"></select>
+<label>Resolution</label><select id="res"><option>1080p</option><option>1440p</option><option>2160p</option></select>
+<label>Graphics preset</label><select id="quality"><option>Low</option><option>Medium</option><option>High</option><option>Ultra</option><option>Extreme</option></select>
+<button onclick="render()" style="width:100%;margin-top:15px">Simulate PC</button>
+<button class="secondary" onclick="randomBuild()" style="width:100%;margin-top:8px">Random build</button>
+</aside>
+<main>
+<section class="hero">
+<div class="card">
+<h1 id="title">Ryzen 5 5500 + RTX 3060</h1>
+<p class="muted">Example configuration • benchmark model</p>
+<div class="score" id="score">—</div><span class="pill">Performance score</span>
+<div class="statgrid" style="margin-top:20px">
+<div class="stat">Est. total<b id="price">₹—</b></div>
+<div class="stat">Gaming<b id="avgfps">— FPS</b></div>
+<div class="stat">VRAM<b id="vram">— GB</b></div>
+<div class="stat">RAM<b id="ramout">—</b></div>
+</div>
+</div>
+<div class="card">
+<h2>Value analysis</h2>
+<p class="muted">Performance per ₹1,000</p>
+<div class="score" style="font-size:42px" id="value">—</div>
+<div class="bar"><i id="valuebar"></i></div>
+<p id="verdict" class="muted" style="margin-top:16px"></p>
+</div>
+</section>
+
+<section class="card" style="margin-top:18px">
+<h2>Selected components</h2><div class="parts" id="parts"></div>
+<div class="note">Prices and FPS shown here are demonstration estimates. A production version can connect to live Indian retailer/API data and a verified benchmark database to update prices by date and use measured game benchmarks.</div>
+</section>
+
+<section class="card" style="margin-top:18px">
+<h2>Estimated game FPS</h2>
+<p class="muted">Modeled from the selected GPU, CPU, resolution and graphics preset.</p>
+<table><thead><tr><th>Game</th><th>Estimated FPS</th><th>Class</th></tr></thead><tbody id="games"></tbody></table>
+</section>
+</main>
+</div>
+</div>
+<script>
+const data={
+cpu:[
+{name:"Ryzen 5 5500",brand:"AMD",price:7200,score:52},
+{name:"Ryzen 5 5600",brand:"AMD",price:9800,score:65},
+{name:"Ryzen 5 7600",brand:"AMD",price:18500,score:88},
+{name:"Core i5-12400F",brand:"Intel",price:10500,score:68},
+{name:"Core i5-13400F",brand:"Intel",price:15500,score:79},
+{name:"Core i5-14600K",brand:"Intel",price:24500,score:96},
+{name:"Ryzen 7 7800X3D",brand:"AMD",price:34500,score:100}
+],
+gpu:[
+{name:"RTX 3060 12GB",brand:"NVIDIA",price:23000,score:64,vram:12},
+{name:"RTX 4060 8GB",brand:"NVIDIA",price:28500,score:74,vram:8},
+{name:"RTX 4060 Ti 8GB",brand:"NVIDIA",price:36500,score:86,vram:8},
+{name:"RTX 4070 Super 12GB",brand:"NVIDIA",price:60000,score:115,vram:12},
+{name:"RX 7600 8GB",brand:"AMD",price:24500,score:70,vram:8},
+{name:"RX 7800 XT 16GB",brand:"AMD",price:50000,score:105,vram:16},
+{name:"RX 7900 XTX 24GB",brand:"AMD",price:95000,score:150,vram:24}
+],
+ram:[
+{name:"16GB DDR4",price:3500,score:1},
+{name:"32GB DDR4",price:6500,score:2},
+{name:"16GB DDR5",price:5000,score:2},
+{name:"32GB DDR5",price:9000,score:4},
+{name:"64GB DDR5",price:17000,score:7}
+],
+storage:[
+{name:"500GB NVMe SSD",price:3000,score:1},
+{name:"1TB NVMe SSD",price:5500,score:2},
+{name:"2TB NVMe SSD",price:9500,score:3}
+]};
+const games=[
+["Counter-Strike 2",1.25],["Valorant",1.55],["Fortnite",1.0],["GTA V",.88],["Cyberpunk 2077",.55],["Red Dead Redemption 2",.62],["Forza Horizon 5",.78],["Minecraft Java + shaders",.72]
+];
+const $=id=>document.getElementById(id);
+function fill(id,list){$(id).innerHTML=list.map((x,i)=>`<option value="${i}">${x.name} — ₹${x.price.toLocaleString('en-IN')}</option>`).join("")}
+fill("cpu",data.cpu);fill("gpu",data.gpu);fill("ram",data.ram);fill("storage",data.storage);
+$("cpu").value=0;$("gpu").value=0;$("ram").value=0;$("storage").value=1;
+function render(){
+ const c=data.cpu[$("cpu").value],g=data.gpu[$("gpu").value],r=data.ram[$("ram").value],s=data.storage[$("storage").value];
+ const res=$("res").value,q=$("quality").value;
+ let price=c.price+g.price+r.price+s.price+11500;
+ let base=g.score*0.82+c.score*0.18;
+ const rm={"Low":1.35,"Medium":1.15,"High":1,"Ultra":.78,"Extreme":.63}[q];
+ const rx={"1080p":1,"1440p":.74,"2160p":.47}[res];
+ let fps=Math.round(base*rm*rx);
+ let score=Math.round(base*10);
+ let value=(score/(price/1000)).toFixed(2);
+ $("title").textContent=c.name+" + "+g.name;
+ $("score").textContent=score;
+ $("price").textContent="₹"+price.toLocaleString("en-IN");
+ $("avgfps").textContent=fps+" FPS";
+ $("vram").textContent=g.vram+" GB";
+ $("ramout").textContent=r.name;
+ $("value").textContent=value;
+ $("valuebar").style.width=Math.min(100,Number(value)*1.5)+"%";
+ $("verdict").textContent=value>5?"Strong modeled performance for the money.":value>3.5?"Balanced build for its estimated cost.":"Performance is expensive relative to this model.";
+ $("parts").innerHTML=[
+ ["CPU",c.name,c.price],["GPU",g.name,g.price],["RAM",r.name,r.price],["Storage",s.name,s.price],["Other parts","Motherboard + PSU + case + cooler (estimate)",11500]
+ ].map(x=>`<div class="part"><small>${x[0]}</small><b>${x[1]}</b><span>₹${x[2].toLocaleString('en-IN')}</span></div>`).join("");
+ $("games").innerHTML=games.map(([name,m])=>{let f=Math.max(1,Math.round(fps*m));return `<tr><td>${name}</td><td><b>${f} FPS</b></td><td>${f>=120?"High refresh":f>=60?"Playable":"Demanding"}</td></tr>`}).join("");
+}
+function randomBuild(){["cpu","gpu","ram","storage"].forEach(id=>$(id).value=Math.floor(Math.random()*data[id].length));render()}
+render();
+</script>
+</body></html>
